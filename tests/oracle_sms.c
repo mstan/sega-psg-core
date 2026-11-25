@@ -1,0 +1,13 @@
+#define psg_advance oracle_sms_advance
+#define psg_drain oracle_sms_drain
+#define psg_dump_state_text oracle_sms_dump_state_text
+#define psg_frames_available oracle_sms_frames_available
+#define psg_init oracle_sms_init
+#define psg_load_state oracle_sms_load_state
+#define psg_render oracle_sms_render
+#define psg_reset_leftover oracle_sms_reset_leftover
+#define psg_sample_rate oracle_sms_sample_rate
+#define psg_save_state oracle_sms_save_state
+#define psg_write oracle_sms_write
+#define psg_write_stereo oracle_sms_write_stereo
+#include "oracles/sms/sn76489.c"

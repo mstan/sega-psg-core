@@ -1,0 +1,39 @@
+{
+  "donors": [
+    {
+      "repository": "https://github.com/mstan/segagenesisrecomp",
+      "revision": "403bf4f2c960644c35fca8d8c9a1aa7d03858846",
+      "path": "runner/audio/sn76489.c",
+      "sha256": "881fad712e3cafe796dc9eb261ac6c1013bfa368ccefae12fd0bcf645d39b200",
+      "oracle": "tests/oracles/genesis/sn76489.c"
+    },
+    {
+      "repository": "https://github.com/mstan/segagenesisrecomp",
+      "revision": "403bf4f2c960644c35fca8d8c9a1aa7d03858846",
+      "path": "runner/audio/sn76489.h",
+      "sha256": "6c50cf6cf45ef3680b75dfb027922eb19275d4f43b468588737dbe9aa5a1fd74",
+      "oracle": "tests/oracles/genesis/sn76489.h"
+    },
+    {
+      "repository": "https://github.com/mstan/smsggrecomp",
+      "revision": "07e2c28e79329c9fe3a63f754889204fc4357c70",
+      "path": "runner/audio/sn76489.c",
+      "sha256": "f1338168e915b4b6006883d302784a2f7a0400bb988e4b9c6b521a0e276bcd3a",
+      "oracle": "tests/oracles/sms/sn76489.c"
+    },
+    {
+      "repository": "https://github.com/mstan/smsggrecomp",
+      "revision": "07e2c28e79329c9fe3a63f754889204fc4357c70",
+      "path": "runner/audio/sn76489.h",
+      "sha256": "6cd04ba4236cdad127e304f4b4d86aacc7629537e41d7fcc33544963d06330f7",
+      "oracle": "tests/oracles/sms/sn76489.h"
+    }
+  ],
+  "changes": [
+    "Process globals and mutable derived caches moved into owned contexts.",
+    "Identical register decoder, noise reload and attenuation source shared.",
+    "Separate accepted Genesis and SMS/GG native oscillator/block render profiles preserved.",
+    "Opaque C instance API; profile fixed at construction.",
+    "Transactional snapshot validation before publication."
+  ]
+}
