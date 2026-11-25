@@ -23,3 +23,10 @@ int sega_psg_save(sega_psg *p,FILE *f){return p&&f?p->ops->save(p->context,f):0;
 int sega_psg_load(sega_psg *p,FILE *f){return p&&f?p->ops->load(p->context,f):0;}
 int sega_psg_audition_channels(sega_psg *p,unsigned m){return p?p->ops->audition(p->context,m):0;}
 size_t sega_psg_peek_audition(sega_psg *p,int16_t *f,int16_t *r,size_t n){return p?p->ops->peek(p->context,f,r,n):0;}
+
+size_t sega_psg_render_pair(sega_psg *p,int16_t *f,int16_t *r,size_t n){return p&&p->ops->pair?p->ops->pair(p->context,f,r,n):0;}
+void sega_psg_reset_leftover(sega_psg *p){if(p&&p->ops->clock_reset)p->ops->clock_reset(p->context);}
+size_t sega_psg_rb_save(sega_psg *p,void *o,size_t n){return p&&p->ops->rb_save?p->ops->rb_save(p->context,o,n):0;}
+int sega_psg_rb_load(sega_psg *p,const void *i,size_t n){return p&&p->ops->rb_load?p->ops->rb_load(p->context,i,n):0;}
+uint64_t sega_psg_state_hash(sega_psg *p){return p&&p->ops->hash?p->ops->hash(p->context):0;}
+int sega_psg_state_dump(sega_psg *p,char *o,int n){return p&&p->ops->dump?p->ops->dump(p->context,o,n):0;}
