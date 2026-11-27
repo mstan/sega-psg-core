@@ -14,6 +14,12 @@ typedef struct {
     int (*load)(void *,FILE *);
     int (*audition)(void *,unsigned);
     size_t (*peek)(void *,int16_t *,int16_t *,size_t);
+    size_t (*pair)(void *,int16_t *,int16_t *,size_t);
+    void (*clock_reset)(void *);
+    size_t (*rb_save)(void *,void *,size_t);
+    int (*rb_load)(void *,const void *,size_t);
+    uint64_t (*hash)(void *);
+    int (*dump)(void *,char *,int);
 } ProfileOps;
 extern const ProfileOps sega_psg_genesis_ops, sega_psg_sms_ops;
 #endif

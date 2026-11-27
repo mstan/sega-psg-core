@@ -425,4 +425,116 @@ static int instance_load(void *v,FILE *f){
 }
 static int instance_audition(void *c,unsigned m){psg_set_audition_channels((PSGContext *)c,m);return 1;}
 static size_t instance_peek(void *c,int16_t *f,int16_t *r,size_t n){return psg_peek_audition((PSGContext *)c,f,r,n);}
-const ProfileOps sega_psg_genesis_ops={instance_create,instance_destroy,instance_reset,instance_write,instance_advance,instance_available,instance_render,instance_stereo,instance_save,instance_load,instance_audition,instance_peek};
+
+#define COSIM_FNV_OFFSET 1469598103934665603ULL
+#define COSIM_FNV_PRIME  1099511628211ULL
+
+static inline uint64_t cosim_fnv_init(void) { return COSIM_FNV_OFFSET; }
+
+static inline uint64_t cosim_fnv_bytes(uint64_t h, const void *p, size_t n) {
+    const uint8_t *b = (const uint8_t *)p;
+    for (size_t i = 0; i < n; i++) { h ^= b[i]; h *= COSIM_FNV_PRIME; }
+    return h;
+}
+/* Explicit little-endian scalar folds — never hash struct memory directly
+ * (padding bytes are a classic false-divergence source). */
+static inline uint64_t cosim_fnv_u8 (uint64_t h, uint8_t  v){ return cosim_fnv_bytes(h,&v,1); }
+static inline uint64_t cosim_fnv_u16(uint64_t h, uint16_t v){ uint8_t b[2]={(uint8_t)v,(uint8_t)(v>>8)}; return cosim_fnv_bytes(h,b,2); }
+static inline uint64_t cosim_fnv_u32(uint64_t h, uint32_t v){ uint8_t b[4]={(uint8_t)v,(uint8_t)(v>>8),(uint8_t)(v>>16),(uint8_t)(v>>24)}; return cosim_fnv_bytes(h,b,4); }
+static inline uint64_t cosim_fnv_u64(uint64_t h, uint64_t v){ h=cosim_fnv_u32(h,(uint32_t)v); return cosim_fnv_u32(h,(uint32_t)(v>>32)); }
+
+/* Fold a value into a rolling chain hash (order-sensitive). */
+static inline uint64_t cosim_fold(uint64_t h, uint64_t v){ return cosim_fnv_u64(h, v); }
+
+
+static uint64_t psg_cosim_hash(PSGContext *ctx)
+{
+    if (!ctx->s_inited) psg_init(ctx);
+    uint64_t h = cosim_fnv_init();
+    for (int i = 0; i < 3; i++) h = cosim_fnv_u16(h, ctx->s_sn.tone_period[i]);
+    for (int i = 0; i < 3; i++) h = cosim_fnv_u32(h, (uint32_t)ctx->s_sn.tone_counter[i]);
+    for (int i = 0; i < 3; i++) h = cosim_fnv_u8(h, ctx->s_sn.tone_out[i]);
+    for (int i = 0; i < 4; i++) h = cosim_fnv_u8(h, ctx->s_sn.vol[i]);
+    h = cosim_fnv_u8(h, ctx->s_sn.noise_ctrl);
+    h = cosim_fnv_u32(h, (uint32_t)ctx->s_sn.noise_counter);
+    h = cosim_fnv_u16(h, ctx->s_sn.lfsr);
+    h = cosim_fnv_u8(h, ctx->s_sn.noise_ff);
+    h = cosim_fnv_u8(h, ctx->s_sn.noise_out);
+    h = cosim_fnv_u8(h, ctx->s_sn.latch);
+    h = cosim_fnv_u32(h, (uint32_t)ctx->s_sn.lpf_y);
+    h = cosim_fnv_u32(h, (uint32_t)ctx->s_sn.lpf_prev);
+    h = cosim_fnv_u32(h, ctx->s_leftover_master_cycles);
+    return h;
+}
+
+static int psg_cosim_dump(PSGContext *ctx, char *buf, int cap) {
+    if (!ctx->s_inited) psg_init(ctx);
+    return snprintf(buf, (size_t)cap,
+        "tone_p %u %u %u tone_c %d %d %d tone_o %u %u %u "
+        "vol %u %u %u %u noise_ctrl %u noise_c %d lfsr %u noise_ff %u noise_o %u "
+        "latch %u leftover %u",
+        ctx->s_sn.tone_period[0], ctx->s_sn.tone_period[1], ctx->s_sn.tone_period[2],
+        ctx->s_sn.tone_counter[0], ctx->s_sn.tone_counter[1], ctx->s_sn.tone_counter[2],
+        ctx->s_sn.tone_out[0], ctx->s_sn.tone_out[1], ctx->s_sn.tone_out[2],
+        ctx->s_sn.vol[0], ctx->s_sn.vol[1], ctx->s_sn.vol[2], ctx->s_sn.vol[3],
+        ctx->s_sn.noise_ctrl, ctx->s_sn.noise_counter, ctx->s_sn.lfsr, ctx->s_sn.noise_ff,
+        ctx->s_sn.noise_out, ctx->s_sn.latch, ctx->s_leftover_master_cycles);
+}
+
+static size_t psg_rb_save(PSGContext *ctx, void *dst, size_t cap)
+{
+    if (!ctx->s_inited) psg_init(ctx);
+    uint32_t pend = (uint32_t)(ctx->s_scratch_write - ctx->s_scratch_read);
+    size_t need = sizeof ctx->s_sn + sizeof ctx->s_leftover_master_cycles + sizeof ctx->s_aud + sizeof pend +
+                  (size_t)pend * 4u * sizeof(int16_t);
+    if (!dst) return need;
+    if (cap < need) return 0;
+    uint8_t *o = (uint8_t *)dst;
+    memcpy(o, &ctx->s_sn, sizeof ctx->s_sn); o += sizeof ctx->s_sn;
+    memcpy(o, &ctx->s_leftover_master_cycles, sizeof ctx->s_leftover_master_cycles);
+    o += sizeof ctx->s_leftover_master_cycles;
+    AuditionState audition=audition_state(ctx);
+    memcpy(o,&audition,sizeof audition);o+=sizeof audition;
+    memcpy(o, &pend, sizeof pend); o += sizeof pend;
+    memcpy(o, &ctx->s_scratch[ctx->s_scratch_read], (size_t)pend * sizeof(int16_t));
+    o += (size_t)pend * sizeof(int16_t);
+    memcpy(o, &ctx->s_raw_scratch[ctx->s_scratch_read], (size_t)pend * sizeof(int16_t));o+=(size_t)pend*sizeof(int16_t);
+    memcpy(o,(ctx->s_aud_separate?ctx->s_aud_scratch:ctx->s_scratch)+ctx->s_scratch_read,(size_t)pend*sizeof(int16_t));o+=(size_t)pend*sizeof(int16_t);
+    memcpy(o,(ctx->s_aud_separate?ctx->s_aud_raw:ctx->s_raw_scratch)+ctx->s_scratch_read,(size_t)pend*sizeof(int16_t));return need;
+}
+
+static int psg_rb_load(PSGContext *ctx, const void *src, size_t len)
+{
+    if (!ctx->s_inited) psg_init(ctx);
+    const uint8_t *i = (const uint8_t *)src;
+    uint32_t pend = 0;
+    size_t fixed = sizeof ctx->s_sn + sizeof ctx->s_leftover_master_cycles + sizeof ctx->s_aud + sizeof pend;
+    if (!src || len < fixed) return 0;
+    memcpy(&pend,i+fixed-sizeof pend,sizeof pend);
+    unsigned mask=0;memcpy(&mask,i+sizeof ctx->s_sn+sizeof ctx->s_leftover_master_cycles,sizeof mask);if(mask>15)return 0;
+    if (pend > PSG_SCRATCH_SAMPLES || len != fixed + (size_t)pend * 4u * sizeof(int16_t)) return 0;
+    memcpy(&ctx->s_sn, i, sizeof ctx->s_sn); i += sizeof ctx->s_sn;
+    memcpy(&ctx->s_leftover_master_cycles, i, sizeof ctx->s_leftover_master_cycles);
+    i+=sizeof ctx->s_leftover_master_cycles;memcpy(&ctx->s_aud,i,sizeof ctx->s_aud);i+=sizeof ctx->s_aud+sizeof pend;
+    memcpy(ctx->s_scratch, i, (size_t)pend * sizeof(int16_t));
+    i += (size_t)pend * sizeof(int16_t);
+    memcpy(ctx->s_raw_scratch,i,(size_t)pend*sizeof(int16_t));i+=(size_t)pend*sizeof(int16_t);
+    memcpy(ctx->s_aud_scratch,i,(size_t)pend*sizeof(int16_t));i+=(size_t)pend*sizeof(int16_t);
+    memcpy(ctx->s_aud_raw,i,(size_t)pend*sizeof(int16_t));
+    ctx->s_scratch_read = 0;
+    ctx->s_scratch_write = pend;
+    ctx->s_aud_separate=pend!=0 || ctx->s_aud.mask!=15;ctx->s_aud_canonical_history=0;
+    return 1;
+}
+
+static size_t instance_pair(void *v,int16_t *f,int16_t *r,size_t n){return psg_render_pair(v,f,r,n);}
+static void instance_clock_reset(void *v){psg_reset_leftover(v);}
+static size_t instance_rb_save(void *v,void *out,size_t n){return psg_rb_save(v,out,n);}
+static int instance_rb_load(void *v,const void *in,size_t n){
+ PSGContext *candidate=malloc(sizeof *candidate);if(!candidate)return 0;*candidate=*(PSGContext*)v;
+ int ok=psg_rb_load(candidate,in,n)&&valid_context(candidate);
+ if(ok)*(PSGContext*)v=*candidate;free(candidate);return ok;
+}
+static uint64_t instance_hash(void *v){return psg_cosim_hash(v);}
+static int instance_dump(void *v,char *out,int n){return out&&n>0?psg_cosim_dump(v,out,n):0;}
+const ProfileOps sega_psg_genesis_ops={instance_create,instance_destroy,instance_reset,instance_write,instance_advance,instance_available,instance_render,instance_stereo,instance_save,instance_load,instance_audition,instance_peek,instance_pair,instance_clock_reset,instance_rb_save,instance_rb_load,instance_hash,instance_dump};
