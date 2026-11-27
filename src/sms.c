@@ -475,4 +475,16 @@ static int instance_load(void *v,FILE *f){
 }
 static int instance_audition(void *c,unsigned m){(void)c;(void)m;return 0;}
 static size_t instance_peek(void *c,int16_t *f,int16_t *r,size_t n){(void)c;(void)f;(void)r;(void)n;return 0;}
-const ProfileOps sega_psg_sms_ops={instance_create,instance_destroy,instance_reset,instance_write,instance_advance,instance_available,instance_render,instance_stereo,instance_save,instance_load,instance_audition,instance_peek};
+static void instance_clock_reset(void *v){psg_reset_leftover((PSGContext *)v);}
+static int instance_dump(void *v,char *output,int capacity){
+ if(!output||capacity<=0)return 0;
+ const SN76489 *p=&((PSGContext *)v)->s_sn;
+ int n=snprintf(output,(size_t)capacity,
+  "tone0_period=%u\ntone1_period=%u\ntone2_period=%u\n"
+  "tone0_vol=%u\ntone1_vol=%u\ntone2_vol=%u\nnoise_vol=%u\n"
+  "noise_ctrl=%u\nlfsr=%u\ngg_panning=%u\n",
+  p->tone_period[0],p->tone_period[1],p->tone_period[2],
+  p->vol[0],p->vol[1],p->vol[2],p->vol[3],p->noise_ctrl,p->lfsr,p->gg_stereo);
+ return n>0&&n<capacity?n:0;
+}
+const ProfileOps sega_psg_sms_ops={instance_create,instance_destroy,instance_reset,instance_write,instance_advance,instance_available,instance_render,instance_stereo,instance_save,instance_load,instance_audition,instance_peek,NULL,instance_clock_reset,NULL,NULL,NULL,instance_dump};

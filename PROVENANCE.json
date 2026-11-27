@@ -29,6 +29,18 @@
       "oracle": "tests/oracles/sms/sn76489.h"
     }
   ],
+  "qualified_extensions": [
+    {
+      "revision": "a9d70f490d1d9e8934dfe244c445f33c567ab440",
+      "files": ["include/sega_psg.h", "src/genesis.c", "src/profile_api.h", "src/sega_psg.c"],
+      "contracts": "Existing Genesis paired/raw capture, full queued-output memory rollback, state hash and diagnostic dump through the opaque instance API."
+    },
+    {
+      "revision": "74e702d00a5bcded7c4c665bf7040f308e3e4c63",
+      "files": ["src/sms.c"],
+      "contracts": "Cumulative extension retaining SMS/GG sub-frame clock reset and labeled state dump; unsupported Genesis-only operations remain unsupported."
+    }
+  ],
   "changes": [
     "Process globals and mutable derived caches moved into owned contexts.",
     "Identical register decoder, noise reload and attenuation source shared.",
