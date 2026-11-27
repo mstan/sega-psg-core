@@ -1,5 +1,7 @@
 # sega-psg-core
 
+Current licensing and the grant for existing owner contributions are documented in [LICENSE-SCOPE.md](LICENSE-SCOPE.md).
+
 Instance-owned native SN76489 synthesis extracted from Genesis and SMS/Game Gear
 runners. Link `sega-psg::core` and include `sega_psg.h`. Each instance owns all
 chip state, scratch queues, audition state and mutable derived lookup tables.
