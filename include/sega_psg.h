@@ -31,7 +31,9 @@ int sega_psg_load(sega_psg *psg, FILE *file);
 int sega_psg_audition_channels(sega_psg *psg, unsigned mask);
 size_t sega_psg_peek_audition(sega_psg *psg, int16_t *filtered, int16_t *raw, size_t frames);
 
-/* Genesis profile: paired capture and full queued-output rollback. */
+/* Genesis supports paired capture, full queued-output rollback and state hash.
+ * Both profiles support remainder reset and their existing diagnostic dump.
+ * Unsupported SMS/GG paired/rollback/hash operations return zero. */
 size_t sega_psg_render_pair(sega_psg *,int16_t *filtered,int16_t *raw,size_t frames);
 void sega_psg_reset_leftover(sega_psg *);
 size_t sega_psg_rb_save(sega_psg *,void *output,size_t capacity);

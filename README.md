@@ -43,6 +43,14 @@ private candidate context before publication. Native game saves are unrelated;
 no cross-build snapshot compatibility or conversion is promised. Snapshot FILEs
 remain owned by the caller.
 
+Genesis also retains paired filtered/raw drains and memory rollback snapshots
+that include the full undrained output queue and audition buffers. These are
+separate from the drained FILE snapshot contract. Memory loads validate a private
+candidate before replacing live state. Genesis exposes its existing diagnostic
+state hash and text dump. Both profiles support resetting the sub-frame clock
+remainder and their profile-specific text dump; SMS/GG does not implement paired
+drains, memory rollback or state hashing, and those operations return zero.
+
 ## Build and validation
 
 ```sh
@@ -57,6 +65,9 @@ noise controls and attenuation levels, latch/data bytes, zero/small tone periods
 cycle remainders, stereo routing, Genesis audition, scratch saturation, reset,
 state roundtrips, malformed transactional loads and independent instances.
 Optimized Genesis silent spans and SMS/GG event spans remain active.
+The qualified API test additionally checks paired queued-output restore,
+transactional memory rejection, clock reset and both diagnostic dump contracts
+against the frozen donors.
 
 The extracted core shares register handling/reload/attenuation code. Remaining
 profile render paths are intentionally separate because their noise, stereo and
@@ -65,7 +76,8 @@ quality and built-game performance remain integration-stage work.
 
 ## Provenance and licensing
 
-`PROVENANCE.json` pins both source revisions and frozen source hashes. The source
+`PROVENANCE.json` pins both source revisions, frozen source hashes and qualified
+API extensions retained by the common provider. The source
 is licensed under PolyForm Noncommercial 1.0.0; donor additional permission grants
 are retained under `licenses/`. No retail images, audio captures, firmware or
 generated guest source are included.
